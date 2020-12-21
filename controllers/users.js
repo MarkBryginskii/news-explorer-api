@@ -2,11 +2,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.js');
 
+const { JWT_DEV } = require('../config');
+
+const { NODE_ENV, JWT_SECRET } = process.env;
+
 const AuthorizationError = require('../errors/AuthorizationError');
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictExplained = require('../errors/ConflictExplained');
-
-const { NODE_ENV, JWT_SECRET } = process.env;
 
 const createUser = (req, res, next) => {
   User.findOne({ email: req.body.email })
@@ -30,12 +32,12 @@ const login = (req, res, next) => {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
+      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : JWT_DEV, { expiresIn: '7d' });
 
       res.send({ token });
     })
     .catch(() => {
-      throw new AuthorizationError('Ошибка авторизации');
+      throw new AuthorizationError('Неправильная почта или пароль');
     })
     .catch(next);
 };

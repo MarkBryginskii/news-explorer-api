@@ -1,29 +1,26 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { errors, celebrate, Joi } = require('celebrate');
+const { errors } = require('celebrate');
+const { limiter } = require('./middlewares/limiter');
 
-const {
-  createUser, login,
-} = require('./controllers/users');
+const { DB_LINK } = require('./config');
 
-const auth = require('./middlewares/auth');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 
-const NotFoundError = require('./errors/NotFoundError');
-
-const usersRouters = require('./routers/users');
-const articlesRouters = require('./routers/articles');
+const routers = require('./routers/index');
 
 const { PORT = 3000 } = process.env;
 
 const app = express();
 
 app.use(cors());
+app.use(helmet());
 
-mongoose.connect('mongodb://localhost:27017/newsdb', {
+mongoose.connect(DB_LINK, {
   useNewUrlParser: true,
   useCreateIndex: true,
   useFindAndModify: false,
@@ -31,35 +28,12 @@ mongoose.connect('mongodb://localhost:27017/newsdb', {
 });
 
 app.use(bodyParser.json());
-
 app.use(requestLogger);
+app.use(limiter);
 
-app.use('/signup', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    password: Joi.string().alphanum().required().min(5),
-    name: Joi.string().required().min(2).max(30),
-  }),
-}), createUser);
-
-app.use('/signin', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    password: Joi.string().alphanum().required().min(5),
-  }),
-}), login);
-
-app.use(auth);
-
-app.use('/', usersRouters);
-app.use('/', articlesRouters);
-
-app.all('/*', () => {
-  throw new NotFoundError('Запрашиваемый ресурс не найден');
-});
+app.use(routers);
 
 app.use(errorLogger);
-
 app.use(errors());
 
 // eslint-disable-next-line no-unused-vars

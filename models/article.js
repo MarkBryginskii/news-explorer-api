@@ -49,4 +49,10 @@ const articleSchema = new mongoose.Schema({
   },
 });
 
+articleSchema.methods.toJSON = function toJSON() {
+  const obj = this.toObject();
+  delete obj.owner;
+  return obj;
+};
+
 module.exports = mongoose.model('article', articleSchema);
